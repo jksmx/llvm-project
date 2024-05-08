@@ -243,6 +243,18 @@ static cl::opt<bool>
     EnableGVNSink("enable-gvn-sink",
                   cl::desc("Enable the GVN sinking pass (default = off)"));
 
+
+static cl::opt<bool> Flattening("fla", cl::init(false), cl::desc("enable the flattening pass"));
+
+static cl::opt<bool> BogusControlFlow("bcf", cl::init(false), cl::desc("enable the bogus control flow"));
+
+static cl::opt<bool> Substitution("sub", cl::init(false), cl::desc("Enable the substitutions"));
+
+static cl::opt<bool> AesSeed("aesSeed", cl::init(""), cl::desc("Enable the AES seed"));
+
+static cl::opt<bool> Split("split", cl::init(false), cl::desc("Enable the basic block splitting"));
+
+
 // This option is used in simplifying testing SampleFDO optimizations for
 // profile loading.
 static cl::opt<bool>

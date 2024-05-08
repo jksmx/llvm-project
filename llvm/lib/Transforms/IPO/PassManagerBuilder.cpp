@@ -38,6 +38,11 @@
 #include "llvm/Transforms/Scalar/SimpleLoopUnswitch.h"
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Vectorize.h"
+#include "llvm/Transforms/Obfuscation/BogusControlFlow.h"
+#include "llvm/Transforms/Obfuscation/Flattening.h"
+#include "llvm/Transforms/Obfuscation/Split.h"
+#include "llvm/Transforms/Obfuscation/Substitution.h"
+#include "llvm/Transforms/Obfuscation/CryptoUtils.h"
 
 using namespace llvm;
 
@@ -59,6 +64,13 @@ PassManagerBuilder::PassManagerBuilder() {
     MergeFunctions = false;
     DivergentTarget = false;
     CallGraphProfile = true;
+
+    if (!AesSeed.empty()) {
+      if (!llvm::cryptoutils->prng_seed(AesSeed.c_str())) {
+        llvm::errs() << "AES seed must be 16 characters long\n";
+        exit(1);
+      }
+    }
 }
 
 PassManagerBuilder::~PassManagerBuilder() {
@@ -294,6 +306,10 @@ void PassManagerBuilder::populateModulePassManager(
   // Allow forcing function attributes as a debugging and tuning aid.
   MPM.add(createForceFunctionAttrsLegacyPass());
 
+  MPM.add(createSplitBasicBlock(Split));
+  MPM.add(createBogus(BogusControlFlow));
+  MPM.add(createFlattening(Flattening));
+
   // If all optimizations are disabled, just run the always-inline pass and,
   // if enabled, the function merging pass.
   if (OptLevel == 0) {
@@ -323,6 +339,9 @@ void PassManagerBuilder::populateModulePassManager(
 
   if (OptLevel > 2)
     MPM.add(createCallSiteSplittingPass());
+
+  
+  MPM.add(createSubstitution(Substitution));
 
   MPM.add(createIPSCCPPass());          // IP SCCP
   MPM.add(createCalledValuePropagationPass());
@@ -384,6 +403,8 @@ void PassManagerBuilder::populateModulePassManager(
     MPM.add(createGlobalOptimizerPass());
     MPM.add(createGlobalDCEPass());
   }
+
+  MPM.add(createSubstitution(Substitution));
 
   // We add a fresh GlobalsModRef run at this point. This is particularly
   // useful as the above will have inlined, DCE'ed, and function-attr
